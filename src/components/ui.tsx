@@ -77,7 +77,7 @@ export function Drawer({
   }, [open]);
 
   if (!open) return null;
-  const width = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-6xl" }[size];
+  const width = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-5xl" }[size];
   return (
     <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-gray-900/30" onClick={onClose} />
@@ -248,182 +248,129 @@ export function MultiSelectDropdown<T extends { id: number | string; name: strin
   invalid,
   id,
   className,
-  searchable = true,
 }: {
   options: T[];
-  value: T["id"][];
-  onChange: (value: T["id"][]) => void;
+  value: Array<number | string>;
+  onChange: (next: Array<number | string>) => void;
   placeholder?: string;
   allLabel?: string;
   disabled?: boolean;
   invalid?: boolean;
   id?: string;
   className?: string;
-  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
-  const toggle = (optionId: T["id"]) => {
-    if (value.includes(optionId)) {
-      onChange(value.filter((id) => id !== optionId));
+  const selectedSet = useMemo(() => new Set(value.map(String)), [value]);
+  const selectedNames = useMemo(
+    () => options.filter((o) => selectedSet.has(String(o.id))).map((o) => o.name),
+    [options, selectedSet],
+  );
+
+  const summary =
+    selectedNames.length === 0
+      ? placeholder
+      : options.length > 1 && selectedNames.length === options.length
+      ? `${allLabel} (${selectedNames.length})`
+      : selectedNames.length <= 2
+      ? selectedNames.join(", ")
+      : `${selectedNames.slice(0, 2).join(", ")} +${selectedNames.length - 2}`;
+
+  const toggle = (itemId: number | string) => {
+    const key = String(itemId);
+    if (selectedSet.has(key)) {
+      onChange(value.filter((v) => String(v) !== key));
     } else {
-      onChange([...value, optionId]);
+      onChange([...value, itemId]);
     }
   };
 
-  const selectAll = () => {
-    onChange(options.map((o) => o.id));
-  };
-
-  const clearAll = () => {
-    onChange([]);
-  };
-
-  const filteredOptions = useMemo(() => {
-    if (!search.trim()) return options;
-    const s = search.toLowerCase();
-    return options.filter((o) => o.name.toLowerCase().includes(s));
-  }, [options, search]);
-
-  const isAllSelected = options.length > 0 && options.every((o) => value.includes(o.id));
-
   return (
-    <div ref={containerRef} className={cx("relative", className)}>
+    <div ref={wrapRef} className={cx("relative", className)}>
       <button
         id={id}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((prev) => !prev)}
-        className={cx(
-          "input flex min-h-[38px] w-full items-center justify-between gap-2 py-1.5 text-left disabled:cursor-not-allowed disabled:bg-gray-50",
-          invalid && "input-error",
-        )}
         aria-haspopup="listbox"
         aria-expanded={open}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className={cx(
+          "input flex items-center justify-between gap-2 text-left",
+          invalid && "input-error",
+          disabled && "cursor-not-allowed opacity-70",
+        )}
       >
-        <div className="flex flex-1 flex-wrap items-center gap-1 overflow-hidden">
-          {value.length === 0 ? (
-            <span className="text-sm text-gray-400">{placeholder}</span>
-          ) : isAllSelected && options.length > 1 ? (
-            <span className="text-sm font-medium text-gray-800">
-              {allLabel} ({options.length})
-            </span>
-          ) : (
-            value.map((vId) => {
-              const opt = options.find((o) => o.id === vId);
-              if (!opt) return null;
-              return (
-                <span
-                  key={String(vId)}
-                  className="inline-flex items-center gap-1 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-800"
-                >
-                  {opt.name}
-                  {!disabled && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggle(vId);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.stopPropagation();
-                          toggle(vId);
-                        }
-                      }}
-                      aria-label={`Remove ${opt.name}`}
-                    >
-                      <X size={12} />
-                    </span>
-                  )}
-                </span>
-              );
-            })
-          )}
-        </div>
-        <ChevronDown
-          size={16}
-          className={cx("shrink-0 text-gray-400 transition-transform", open && "rotate-180")}
-        />
+        <span className={cx("truncate", selectedNames.length === 0 && "text-gray-400")}>{summary}</span>
+        <ChevronDown size={15} className={cx("shrink-0 text-gray-400 transition-transform", open && "rotate-180")} />
       </button>
 
       {open && !disabled && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-full min-w-[200px] overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg">
-          <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-1.5 text-xs">
-            <button
-              type="button"
-              className="font-medium text-brand-700 hover:underline"
-              onClick={selectAll}
-            >
-              Select all
-            </button>
-            <button
-              type="button"
-              className="text-gray-500 hover:underline"
-              onClick={clearAll}
-            >
-              Clear
-            </button>
-          </div>
-
-          {searchable && options.length > 5 && (
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input py-1 text-xs"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          )}
-
-          <div className="space-y-0.5">
-            {filteredOptions.length === 0 ? (
-              <p className="px-2 py-1.5 text-xs text-gray-400">No options found</p>
-            ) : (
-              filteredOptions.map((o) => {
-                const checked = value.includes(o.id);
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          {options.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-gray-500">No options available</div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between border-b border-gray-100 px-2.5 py-1 text-[11px] text-gray-500">
+                <button
+                  type="button"
+                  className="font-medium text-brand-700 hover:underline"
+                  onClick={() => onChange(options.map((o) => o.id))}
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="text-gray-500 hover:underline"
+                  onClick={() => onChange([])}
+                >
+                  Clear
+                </button>
+              </div>
+              {options.map((o) => {
+                const checked = selectedSet.has(String(o.id));
                 return (
                   <label
                     key={String(o.id)}
-                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
+                    className={cx(
+                      "flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50",
+                      checked && "bg-brand-50/50 font-medium text-brand-900",
+                    )}
                   >
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 accent-brand-700"
+                      className="h-4 w-4 rounded border-gray-300 text-brand-700 accent-brand-700"
                       checked={checked}
                       onChange={() => toggle(o.id)}
                     />
-                    <span className="truncate text-gray-800">{o.name}</span>
+                    <span className="truncate">{o.name}</span>
                   </label>
                 );
-              })
-            )}
-          </div>
+              })}
+            </>
+          )}
         </div>
       )}
     </div>

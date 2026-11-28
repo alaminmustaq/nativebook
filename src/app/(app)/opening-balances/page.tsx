@@ -182,13 +182,27 @@ export default function OpeningBalancesPage() {
               search={search}
               selectedId={editing?.id}
               onSelect={open}
-              renderExtra={(a) => {
+              renderInline={(a) => {
                 const value = signed(a);
-                return value ? (
-                  <span className={cx("tabular whitespace-nowrap text-sm", a.is_posting ? "text-gray-800" : "font-semibold text-gray-900")}>
-                    {formatAmount(value, me.preferences)}
+                if (!value) return null;
+                const formatted =
+                  value < 0
+                    ? `-${formatAmount(Math.abs(value), me.preferences)}`
+                    : formatAmount(value, me.preferences);
+                return (
+                  <span
+                    className={cx(
+                      "ml-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold tabular",
+                      value < 0
+                        ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
+                        : a.is_posting
+                        ? "bg-brand-100 text-brand-900 ring-1 ring-brand-600/20"
+                        : "bg-brand-700 text-white",
+                    )}
+                  >
+                    ({formatted})
                   </span>
-                ) : null;
+                );
               }}
             />
           )}

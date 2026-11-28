@@ -261,7 +261,7 @@ function UploadWizard({ onClose, onLoaded }: { onClose: () => void; onLoaded: ()
               <textarea id="u-text" className="input font-mono text-xs" rows={10} value={text} onChange={(e) => setText(e.target.value)} />
             </Field>
           )}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field label="Separator" htmlFor="u-sep">
               <select id="u-sep" className="input" value={opts.separator} onChange={(e) => setOpts({ ...opts, separator: e.target.value })}>
                 <option value=",">Comma (,)</option><option value="\t">Tab</option><option value=";">Semicolon (;)</option><option value="|">Pipe (|)</option>
@@ -285,7 +285,7 @@ function UploadWizard({ onClose, onLoaded }: { onClose: () => void; onLoaded: ()
       {step === 1 && upload && (
         <div className="space-y-4">
           <p className="text-sm text-gray-700">{upload.total_rows} data rows found. Match each field to a column of your file. Columns with a familiar name are matched already.</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {upload.targets.map((t) => (
               <Field key={t.key} label={t.label} required={t.required} htmlFor={`m-${t.key}`}>
                 <select id={`m-${t.key}`} className="input" value={mapping[t.key] ?? ""} onChange={(e) => setMapping({ ...mapping, [t.key]: e.target.value })}>

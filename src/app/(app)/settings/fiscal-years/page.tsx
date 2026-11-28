@@ -140,12 +140,12 @@ export default function FiscalYearsPage() {
         open={!!form}
         title={form?.id ? "Edit fiscal year" : "New fiscal year"}
         onClose={() => setForm(null)}
-        size="sm"
+        size="md"
         footer={<><button className="btn btn-secondary" onClick={() => setForm(null)}>Cancel</button><SaveButton busy={busy} onClick={save}>{form?.id ? "Save" : "Create"}</SaveButton></>}
       >
         {form && (
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
-            <div className="grid grid-cols-2 gap-4">
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); save(); }}>
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Code" required error={errors.code} htmlFor="fy-code">
                 <input id="fy-code" className={cx("input", errors.code && "input-error")} maxLength={10} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
               </Field>

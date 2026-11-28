@@ -177,12 +177,13 @@ export function ReceivePaymentForm({ module, voucherId, onClose, onSaved }: { mo
       {!loaded || definitions.isLoading || types.isLoading ? <Spinner /> : (
         <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); save(); }}>
           {existing.data?.rejection_reason && <ErrorBox error={new Error(`Rejected: ${existing.data.rejection_reason}`)} />}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Field label="Office"><p className="py-2 text-sm">{me.offices.find((o) => o.id === me.office_id)?.name}</p></Field>
+            <Field label="Voucher No"><p className="py-2 text-sm text-gray-600">{existing.data?.voucher_no ?? "Assigned when saved"}</p></Field>
             <Field label="Txn. date" required error={errors.voucher_date} htmlFor="v-date">
               <input id="v-date" type="date" className={cx("input", errors.voucher_date && "input-error")} value={h.voucher_date} onChange={(e) => setH({ ...h, voucher_date: e.target.value })} />
             </Field>
-            <Field label="Voucher No"><p className="py-2 text-sm text-gray-600">{existing.data?.voucher_no ?? "Assigned when saved"}</p></Field>
+
 
             {/* <Field label="Transaction" required error={errors.transaction_definition_id} htmlFor="v-def">
               <select id="v-def" className={cx("input", errors.transaction_definition_id && "input-error")} value={h.transaction_definition_id} onChange={(e) => {
@@ -199,10 +200,12 @@ export function ReceivePaymentForm({ module, voucherId, onClose, onSaved }: { mo
                 {allowedTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </Field>
-            <Field label={headerLabel} required error={errors.header_account_id} htmlFor="v-head">
-              <AccountPicker id="v-head" accounts={headerAccounts.accounts} value={h.header_account_id} onChange={(id) => setH({ ...h, header_account_id: id })} disabled={!type} invalid={!!errors.header_account_id} placeholder={type ? "Choose account" : "Choose a transaction type first"} />
-            </Field>
-            {/* 
+            <div className="sm:col-span-2">
+              <Field label={headerLabel} required error={errors.header_account_id} htmlFor="v-head">
+                <AccountPicker id="v-head" accounts={headerAccounts.accounts} value={h.header_account_id} onChange={(id) => setH({ ...h, header_account_id: id })} disabled={!type} invalid={!!errors.header_account_id} placeholder={type ? "Choose account" : "Choose a transaction type first"} />
+              </Field>
+            </div>
+            {/*
             <Field label={isReceive ? "Receive from" : "Payee type"} error={errors.payee_type} htmlFor="v-ptype">
               <select id="v-ptype" className="input" value={h.payee_type} onChange={(e) => setH({ ...h, payee_type: e.target.value, payee_id: "" })}>
                 <option value="">None</option>
@@ -244,7 +247,7 @@ export function ReceivePaymentForm({ module, voucherId, onClose, onSaved }: { mo
             {/* <Field label="Ref. Advice No." htmlFor="v-ref">
               <input id="v-ref" className="input" maxLength={50} value={h.ref_advice_no} onChange={(e) => setH({ ...h, ref_advice_no: e.target.value })} />
             </Field> */}
-            <div className="sm:col-span-1">
+            <div className={type?.show_instrument ? "sm:col-span-3" : "sm:col-span-3 lg:col-span-6"}>
               <Field label="Narration" htmlFor="v-rem">
                 <input id="v-rem" className="input" maxLength={1000} value={h.narration} onChange={(e) => setH({ ...h, narration: e.target.value, remarks: e.target.value })} />
               </Field>

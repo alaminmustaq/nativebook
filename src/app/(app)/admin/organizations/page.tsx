@@ -80,16 +80,16 @@ export default function OrganizationsPage() {
       </div>
       <Drawer open={!!form} title="New organization" onClose={() => setForm(null)} footer={<><button className="btn btn-secondary" onClick={() => setForm(null)}>Cancel</button><SaveButton busy={busy} onClick={save}>Create</SaveButton></>}>
         {form && (
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); save(); }}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><Field label="Name" required error={errors.name} htmlFor="org-name"><input id="org-name" className={cx("input", errors.name && "input-error")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field></div>
               <Field label="Code" required error={errors.code} htmlFor="org-code" hint="Short unique code, e.g. ACME"><input id="org-code" className={cx("input", errors.code && "input-error")} maxLength={30} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} /></Field>
               <Field label="Currency" error={errors.currency_code} htmlFor="org-cur"><input id="org-cur" className="input" maxLength={3} value={form.currency_code} onChange={(e) => setForm({ ...form, currency_code: e.target.value.toUpperCase() })} /></Field>
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-brand-700" checked={form.seed_chart_of_accounts} onChange={(e) => setForm({ ...form, seed_chart_of_accounts: e.target.checked })} /> Start with the default chart of accounts (303 accounts)</label>
-            <fieldset className="space-y-4 rounded-md border border-gray-200 p-4">
+            <fieldset className="space-y-3 rounded-md border border-gray-200 p-3.5">
               <legend className="px-1 text-sm font-semibold text-gray-900">First admin user</legend>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Name" required error={errors["admin.name"]} htmlFor="adm-name"><input id="adm-name" className="input" value={form.admin.name} onChange={(e) => a("name", e.target.value)} /></Field>
                 <Field label="Username" required error={errors["admin.username"]} htmlFor="adm-user"><input id="adm-user" className="input" value={form.admin.username} onChange={(e) => a("username", e.target.value)} autoComplete="off" /></Field>
                 <Field label="Email" error={errors["admin.email"]} htmlFor="adm-email"><input id="adm-email" type="email" className="input" value={form.admin.email} onChange={(e) => a("email", e.target.value)} /></Field>

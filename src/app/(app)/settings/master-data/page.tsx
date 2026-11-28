@@ -131,15 +131,17 @@ function Payees() {
             <button className="btn btn-secondary" onClick={() => setEdit(null)}>Cancel</button>
             <SaveButton busy={s.busy} onClick={() => s.save("/settings/payees", edit.id, edit, () => setEdit(null))} />
           </>}>
-          <div className="space-y-4">
-            <Field label="Type" required error={s.errors.type} htmlFor="p-type">
-              <select id="p-type" className="input" value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value as Payee["type"] })}>
-                <option value="customer">Customer</option><option value="supplier">Supplier</option><option value="employee">Employee</option>
-              </select>
-            </Field>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Type" required error={s.errors.type} htmlFor="p-type">
+                <select id="p-type" className="input" value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value as Payee["type"] })}>
+                  <option value="customer">Customer</option><option value="supplier">Supplier</option><option value="employee">Employee</option>
+                </select>
+              </Field>
+              <Field label="Code" error={s.errors.code} htmlFor="p-code"><input id="p-code" className="input" maxLength={30} value={edit.code ?? ""} onChange={(e) => setEdit({ ...edit, code: e.target.value })} /></Field>
+            </div>
             <Field label="Name" required error={s.errors.name} htmlFor="p-name"><input id="p-name" className={cx("input", s.errors.name && "input-error")} maxLength={200} value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-            <Field label="Code" error={s.errors.code} htmlFor="p-code"><input id="p-code" className="input" maxLength={30} value={edit.code ?? ""} onChange={(e) => setEdit({ ...edit, code: e.target.value })} /></Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Phone" error={s.errors.phone} htmlFor="p-phone"><input id="p-phone" className="input" maxLength={50} value={edit.phone ?? ""} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
               <Field label="Email" error={s.errors.email} htmlFor="p-email"><input id="p-email" type="email" className={cx("input", s.errors.email && "input-error")} maxLength={190} value={edit.email ?? ""} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
             </div>
@@ -199,11 +201,11 @@ function Definitions() {
         </div>
       )}
       {edit && (
-        <Drawer open title={edit.id ? `Edit ${edit.name}` : "Add transaction"} onClose={() => setEdit(null)} size="lg"
+        <Drawer open title={edit.id ? `Edit ${edit.name}` : "Add transaction"} onClose={() => setEdit(null)} size="md"
           footer={<><button className="btn btn-secondary" onClick={() => setEdit(null)}>Cancel</button>
             <SaveButton busy={s.busy} onClick={() => s.save("/settings/transaction-definitions", edit.id, { ...edit, module: edit.id ? undefined : edit.module, default_payee_type: edit.default_payee_type || null }, () => setEdit(null))} /></>}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Module" required error={s.errors.module} htmlFor="d-mod">
                 <select id="d-mod" className="input" value={edit.module} disabled={!!edit.id} onChange={(e) => setEdit({ ...edit, module: e.target.value as "receive" | "payment", type_ids: [] })}>
                   <option value="receive">Receive</option><option value="payment">Payment</option>
@@ -289,7 +291,7 @@ function Deductions() {
       {edit && (
         <Drawer open title={edit.id ? `Edit ${edit.name}` : "Add deduction type"} onClose={() => setEdit(null)}
           footer={<><button className="btn btn-secondary" onClick={() => setEdit(null)}>Cancel</button><SaveButton busy={s.busy} onClick={() => s.save("/settings/deduction-types", edit.id, edit, () => setEdit(null))} /></>}>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Field label="Name" required error={s.errors.name} htmlFor="dt-name"><input id="dt-name" className={cx("input", s.errors.name && "input-error")} maxLength={100} value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <Field label="Default account on receive vouchers (debit)" error={s.errors.receive_account_id} htmlFor="dt-r"><AccountPicker id="dt-r" accounts={posting.accounts} value={edit.receive_account_id} onChange={(id) => setEdit({ ...edit, receive_account_id: id })} /></Field>
             <Field label="Default account on payment vouchers (credit)" error={s.errors.payment_account_id} htmlFor="dt-p"><AccountPicker id="dt-p" accounts={posting.accounts} value={edit.payment_account_id} onChange={(id) => setEdit({ ...edit, payment_account_id: id })} /></Field>
@@ -328,7 +330,7 @@ function CostCenters() {
       {edit && (
         <Drawer open size="sm" title={edit.id ? `Edit ${edit.name}` : "Add cost center"} onClose={() => setEdit(null)}
           footer={<><button className="btn btn-secondary" onClick={() => setEdit(null)}>Cancel</button><SaveButton busy={s.busy} onClick={() => s.save("/settings/cost-centers", edit.id, edit, () => setEdit(null))} /></>}>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Field label="Code" required error={s.errors.code} htmlFor="cc-code"><input id="cc-code" className={cx("input", s.errors.code && "input-error")} maxLength={30} value={edit.code ?? ""} onChange={(e) => setEdit({ ...edit, code: e.target.value })} /></Field>
             <Field label="Name" required error={s.errors.name} htmlFor="cc-name"><input id="cc-name" className={cx("input", s.errors.name && "input-error")} maxLength={150} value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <Field label="Status" htmlFor="cc-status"><select id="cc-status" className="input" value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}><option value="active">Active</option><option value="inactive">Inactive</option></select></Field>

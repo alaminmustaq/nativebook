@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // Keep SSO on the frontend origin so Laravel session cookies are scoped there.
-const apiUrl = "https://nativebook.datadss.com";
+const apiUrl = "https://nativebook.vercel.app";
 
 const nextConfig: NextConfig = {
   output: "standalone",

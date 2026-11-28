@@ -124,9 +124,9 @@ export default function UsersPage() {
         footer={<><button className="btn btn-secondary" onClick={() => setForm(null)}>Cancel</button><SaveButton busy={busy} onClick={save} /></>}
       >
         {form && (
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); save(); }}>
             {errors.roles && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{errors.roles}</p>}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Name" required error={errors.name} htmlFor="u-name">
                 <input id="u-name" className={cx("input", errors.name && "input-error")} maxLength={150} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>

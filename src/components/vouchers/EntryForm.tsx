@@ -88,7 +88,7 @@ export function EntryForm({ voucherId, onClose, onSaved }: { voucherId: number |
       </>}>
       {!loaded || types.isLoading ? <Spinner /> : (
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (balanced) save(); }}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Office"><p className="py-2 text-sm">{me.offices.find((o) => o.id === me.office_id)?.name}</p></Field>
             <Field label="Voucher date" required error={errors.voucher_date} htmlFor="e-date">
               <input id="e-date" type="date" className={cx("input", errors.voucher_date && "input-error")} value={h.voucher_date} onChange={(e) => setH({ ...h, voucher_date: e.target.value })} />
@@ -100,7 +100,9 @@ export function EntryForm({ voucherId, onClose, onSaved }: { voucherId: number |
             </Field>
             <Field label="Voucher No"><p className="py-2 text-sm text-gray-600">{existing.data?.voucher_no ?? "Assigned when saved"}</p></Field>
             <Field label="Batch No" htmlFor="e-batch"><input id="e-batch" className="input" maxLength={20} value={h.batch_no} onChange={(e) => setH({ ...h, batch_no: e.target.value })} /></Field>
-            <Field label="Reference" htmlFor="e-ref"><input id="e-ref" className="input" maxLength={200} value={h.reference} onChange={(e) => setH({ ...h, reference: e.target.value })} /></Field>
+            <div className="sm:col-span-2">
+              <Field label="Reference" htmlFor="e-ref"><input id="e-ref" className="input" maxLength={200} value={h.reference} onChange={(e) => setH({ ...h, reference: e.target.value })} /></Field>
+            </div>
             <Field label="Reference date" htmlFor="e-rdate"><input id="e-rdate" type="date" className="input" value={h.reference_date} onChange={(e) => setH({ ...h, reference_date: e.target.value })} /></Field>
           </div>
           {errors.lines && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{errors.lines}</p>}

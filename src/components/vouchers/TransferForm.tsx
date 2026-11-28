@@ -108,7 +108,7 @@ export function TransferForm({ voucherId, onClose, onSaved }: { voucherId: numbe
   }
 
   const sideBlock = (label: string, key: "debit" | "credit", side: Side, set: (s: Side) => void, other: number | null) => (
-    <fieldset className="rounded-md border border-gray-200 p-4">
+    <fieldset className="rounded-md border border-gray-200 p-3.5">
       <legend className="px-1 text-sm font-semibold text-gray-900">{label}</legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Control A/C" htmlFor={`${key}-ctl`} hint={fundTransfer ? "Cash and bank only" : "Optional: narrows the account list"}>
@@ -129,7 +129,7 @@ export function TransferForm({ voucherId, onClose, onSaved }: { voucherId: numbe
       footer={<><button className="btn btn-secondary" onClick={onClose}>Cancel</button><SaveButton busy={busy} onClick={save} disabled={!loaded} /></>}>
       {!loaded || types.isLoading || posting.isLoading ? <Spinner /> : (
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Office"><p className="py-2 text-sm">{me.offices.find((o) => o.id === me.office_id)?.name}</p></Field>
             <Field label="Transaction type" required error={errors.transaction_type_id} htmlFor="t-type" hint={fundTransfer ? "Both accounts must be cash or bank" : undefined}>
               <select id="t-type" className="input" value={h.transaction_type_id} onChange={(e) => setType(e.target.value)}>
@@ -146,7 +146,7 @@ export function TransferForm({ voucherId, onClose, onSaved }: { voucherId: numbe
           {errors.lines && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{errors.lines}</p>}
           {sideBlock("Debit (transfer to)", "debit", debit, setDebit, credit.account_id)}
           {sideBlock("Credit (transfer from)", "credit", credit, setCredit, debit.account_id)}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Field label="Narration" required error={errors["debit.narration"]} htmlFor="t-nar" hint="Used on both the debit and the credit line">
               <input id="t-nar" className={cx("input", errors["debit.narration"] && "input-error")} maxLength={500} value={h.narration} onChange={(e) => setH({ ...h, narration: e.target.value })} />
             </Field>

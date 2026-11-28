@@ -27,7 +27,6 @@ type Form = {
 
 type ExistingChildDraft = {
   id: number;
-  depth: number;
   code: string;
   level: number;
   hasChildren: boolean;
@@ -84,10 +83,6 @@ function makeDraft(normalSide: "D" | "C" | "" = "", glId = "", isPosting = true)
     old_code: "",
     economic_code: "",
   };
-}
-
-function isDraftEmpty(d: ChildDraft): boolean {
-  return !d.title.trim() && !d.old_code.trim() && !d.economic_code.trim();
 }
 
 function isExistingRowDirty(r: ExistingChildDraft): boolean {
@@ -180,8 +175,9 @@ export function AccountDrawer({
     return me.offices;
   }, [officesQuery.data, me.offices]);
 
-  // Head office is the default base office; do not show Head Office in branch selection
+  // Head office is the default base office; only show Branches when multiple offices exist with branch offices
   const branchOffices = useMemo(() => offices.filter((o) => !o.is_head_office), [offices]);
+  const showBranches = offices.length > 1 && branchOffices.length > 0;
 
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -234,35 +230,6 @@ export function AccountDrawer({
     return accounts.filter((a) => a.parent_id === editId).sort((a, b) => a.code.localeCompare(b.code));
   }, [editId, accounts]);
 
-  // All descendants under the selected parent in hierarchical tree order
-  const allDescendants = useMemo(() => {
-    if (editId === null) return [];
-    const byParent = new Map<number, Account[]>();
-    for (const a of accounts) {
-      if (a.parent_id !== null) {
-        const list = byParent.get(a.parent_id) ?? [];
-        list.push(a);
-        byParent.set(a.parent_id, list);
-      }
-    }
-    for (const list of byParent.values()) {
-      list.sort((a, b) => a.code.localeCompare(b.code));
-    }
-    const result: { account: Account; depth: number }[] = [];
-    const visited = new Set<number>();
-    const visit = (parentId: number, depth: number) => {
-      const children = byParent.get(parentId) ?? [];
-      for (const child of children) {
-        if (visited.has(child.id)) continue;
-        visited.add(child.id);
-        result.push({ account: child, depth });
-        visit(child.id, depth + 1);
-      }
-    };
-    visit(editId, 0);
-    return result;
-  }, [editId, accounts]);
-
   const parentHasOffice = Boolean(mode?.kind === "create" && parentAccount?.office_id && !parentAccount?.office?.is_head_office);
 
   const creating = mode?.kind === "create";
@@ -275,7 +242,7 @@ export function AccountDrawer({
     [targetParentCode, targetParentLevel, existingChildCodes, childDrafts.length],
   );
 
-  // Sync all descendant children into editable rows (preserving unsaved edits for the same parent)
+  // Sync immediate child accounts into editable rows (preserving unsaved edits for the same parent)
   useEffect(() => {
     if (mode?.kind !== "edit") {
       setExistingRows([]);
@@ -285,12 +252,11 @@ export function AccountDrawer({
     const isSameParent = prevModeKeyRef.current === modeKey;
     setExistingRows((prev) => {
       const prevById = isSameParent ? new Map(prev.map((r) => [r.id, r])) : new Map<number, ExistingChildDraft>();
-      return allDescendants.map(({ account: c, depth }) => {
+      return directChildren.map((c) => {
         const prevRow = prevById.get(c.id);
         const keepEdited = prevRow && isExistingRowDirty(prevRow);
         return {
           id: c.id,
-          depth,
           code: c.code,
           level: c.level,
           hasChildren: parentIdsSet.has(c.id),
@@ -309,7 +275,7 @@ export function AccountDrawer({
         };
       });
     });
-  }, [mode?.kind, modeKey, allDescendants, accounts]);
+  }, [mode?.kind, modeKey, directChildren, accounts]);
 
   // Reset form and child drafts only when mode/account changes (not on background accounts refetch)
   useEffect(() => {
@@ -519,7 +485,6 @@ export function AccountDrawer({
 
     const validNewRows: ChildDraft[] = [];
     childDrafts.forEach((d, idx) => {
-      if (isDraftEmpty(d)) return;
       if (!d.title.trim()) {
         rowErrors[`children.${idx}.title`] = "Title is required.";
       }
@@ -823,13 +788,13 @@ export function AccountDrawer({
     (isBranchOfficeAccount ? isHeadOfficeUser : !account.has_children);
 
   const dirtyExistingCount = existingRows.filter(isExistingRowDirty).length;
-  const filledDraftCount = childDrafts.filter((d) => !isDraftEmpty(d)).length;
+  const filledDraftCount = childDrafts.length;
   const totalPendingChanges = dirtyExistingCount + filledDraftCount;
 
   return (
     <Drawer
       open={!!mode}
-      size={showChildrenTable ? "xl" : "md"}
+      size={showChildrenTable ? "xl" : "lg"}
       title={creating ? "New GL account" : account ? `${account.title} (${account.code})` : "Account"}
       onClose={onClose}
       footer={
@@ -851,42 +816,53 @@ export function AccountDrawer({
       ) : (
         <div className="space-y-6">
           <form
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+            className={cx(
+              "grid grid-cols-1 gap-3 sm:grid-cols-3",
+              showChildrenTable && "lg:grid-cols-5",
+            )}
             onSubmit={(e) => {
               e.preventDefault();
               save();
             }}
-          >
-            <Field label="Organization unit">
-              <p className="py-2 text-sm text-gray-800">{me.organization?.name}</p>
-            </Field>
-            <Field
-              label="Branches"
-              error={errors.office_ids}
-              htmlFor="office_ids"
-              hint={
-                account?.has_children || !form.is_posting
-                  ? "Header account: selected branches are assigned to child accounts only (parent remains unassigned)"
-                  : parentHasOffice
-                  ? `Control account belongs to ${parentAccount?.office?.name ?? "a branch"}`
-                  : undefined
-              }
             >
-              <MultiSelectDropdown
-                id="office_ids"
-                options={branchOffices}
-                value={form.office_ids}
-                disabled={readOnly}
-                invalid={!!errors.office_ids}
-                placeholder={branchOffices.length ? "Select branches" : "No branch offices"}
-                allLabel="All branches"
-                onChange={(selected) => {
-                  setErrors((x) => ({ ...x, office_ids: "" }));
-                  setForm((f) => ({ ...f, office_ids: selected as number[] }));
-                }}
-              />
-            </Field>
-            <div className="sm:col-span-2">
+              {/*
+
+                <Field label="Organization unit">
+                        <p className="py-2 text-sm text-gray-800">{me.organization?.name}</p>
+                      </Field>
+                */}
+
+            {showBranches && (
+              <div className="sm:col-span-2">
+                <Field
+                  label="Branches"
+                  error={errors.office_ids}
+                  htmlFor="office_ids"
+                  hint={
+                    account?.has_children || !form.is_posting
+                      ? "Header account: selected branches apply to child accounts only"
+                      : parentHasOffice
+                      ? `Control account belongs to ${parentAccount?.office?.name ?? "a branch"}`
+                      : undefined
+                  }
+                >
+                  <MultiSelectDropdown
+                    id="office_ids"
+                    options={branchOffices}
+                    value={form.office_ids}
+                    disabled={readOnly}
+                    invalid={!!errors.office_ids}
+                    placeholder="Select branches"
+                    allLabel="All branches"
+                    onChange={(selected) => {
+                      setErrors((x) => ({ ...x, office_ids: "" }));
+                      setForm((f) => ({ ...f, office_ids: selected as number[] }));
+                    }}
+                  />
+                </Field>
+              </div>
+            )}
+            <div className={cx("sm:col-span-1", showChildrenTable && !showBranches && "lg:col-span-1")}>
               <Field label="Control A/C" required={creating} error={errors.parent_id} htmlFor="parent_id">
                 {creating ? (
                   <select
@@ -920,94 +896,183 @@ export function AccountDrawer({
                 )}
               </Field>
             </div>
-            <Field label="GL A/C No" hint={creating ? "Generated from the control account" : undefined}>
-              <input className="input tabular" value={form.code} disabled readOnly placeholder={creating ? "Choose a control account" : ""} />
-            </Field>
-            <Field label="GL ID" error={errors.gl_id} htmlFor="gl_id" hint="Short numeric code (auto serial if blank)">
-              <input
-                id="gl_id"
-                className={`input ${errors.gl_id ? "input-error" : ""}`}
-                maxLength={20}
-                inputMode="numeric"
-                value={form.gl_id}
-                disabled={readOnly}
-                onChange={(e) => set("gl_id", e.target.value)}
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label="Title" required error={errors.title} htmlFor="title">
-                <input
-                  id="title"
-                  className={`input ${errors.title ? "input-error" : ""}`}
-                  maxLength={200}
-                  value={form.title}
-                  disabled={readOnly}
-                  onChange={(e) => set("title", e.target.value)}
-                />
-              </Field>
-            </div>
-            <Field
-              label="Posting allowed"
-              required
-              error={errors.is_posting}
-              htmlFor="is_posting"
-              hint={postingLocked ? "Locked: the account has child accounts or balances" : "Yes = accepts entries; No = groups other accounts"}
-            >
-              <select
-                id="is_posting"
-                className="input"
-                value={form.is_posting ? "1" : "0"}
-                disabled={readOnly || !!postingLocked}
-                onChange={(e) => set("is_posting", e.target.value === "1")}
-              >
-                <option value="1">Yes</option>
-                <option value="0">No</option>
-              </select>
-            </Field>
-            <Field label="Transaction type" required error={errors.normal_side} htmlFor="normal_side" hint="Normal balance side">
-              <select
-                id="normal_side"
-                className="input"
-                value={form.normal_side}
-                disabled={readOnly}
-                onChange={(e) => set("normal_side", e.target.value as Form["normal_side"])}
-              >
-                <option value="">Select</option>
-                <option value="D">Debit</option>
-                <option value="C">Credit</option>
-              </select>
-            </Field>
-            <Field label="Old GL A/C No" error={errors.old_code} htmlFor="old_code">
-              <input id="old_code" className="input" maxLength={20} value={form.old_code} disabled={readOnly} onChange={(e) => set("old_code", e.target.value)} />
-            </Field>
-            <Field label="Economic code" error={errors.economic_code} htmlFor="economic_code">
-              <input
-                id="economic_code"
-                className="input"
-                maxLength={20}
-                value={form.economic_code}
-                disabled={readOnly}
-                onChange={(e) => set("economic_code", e.target.value)}
-              />
-            </Field>
-            <Field
-              label="Status"
-              required
-              error={errors.status}
-              htmlFor="status"
-              hint={!creating && account && !account.is_posting ? "Making a control account inactive also makes the accounts below it inactive" : undefined}
-            >
-              <select
-                id="status"
-                className="input"
-                value={form.status}
-                disabled={creating ? !canCreate : !canDeactivate}
-                onChange={(e) => set("status", e.target.value as Form["status"])}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </Field>
+            {showChildrenTable ? (
+              <>
+                <div className="sm:col-span-1 lg:col-span-2">
+                  <Field label="Title" required error={errors.title} htmlFor="title">
+                    <input
+                      id="title"
+                      className={`input ${errors.title ? "input-error" : ""}`}
+                      maxLength={200}
+                      value={form.title}
+                      disabled={readOnly}
+                      onChange={(e) => set("title", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field label="GL A/C No" hint={creating ? "Generated from control A/C" : undefined}>
+                  <input className="input tabular" value={form.code} disabled readOnly placeholder={creating ? "Choose control A/C" : ""} />
+                </Field>
+                <Field label="GL ID" error={errors.gl_id} htmlFor="gl_id" hint="Short code (auto if blank)">
+                  <input
+                    id="gl_id"
+                    className={`input ${errors.gl_id ? "input-error" : ""}`}
+                    maxLength={20}
+                    inputMode="numeric"
+                    value={form.gl_id}
+                    disabled={readOnly}
+                    onChange={(e) => set("gl_id", e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Posting allowed"
+                  required
+                  error={errors.is_posting}
+                  htmlFor="is_posting"
+                  hint={postingLocked ? "Locked: has children or balances" : "Yes = entries; No = group"}
+                >
+                  <select
+                    id="is_posting"
+                    className="input"
+                    value={form.is_posting ? "1" : "0"}
+                    disabled={readOnly || !!postingLocked}
+                    onChange={(e) => set("is_posting", e.target.value === "1")}
+                  >
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                  </select>
+                </Field>
+                <Field label="Transaction type" required error={errors.normal_side} htmlFor="normal_side" hint="Normal balance side">
+                  <select
+                    id="normal_side"
+                    className="input"
+                    value={form.normal_side}
+                    disabled={readOnly}
+                    onChange={(e) => set("normal_side", e.target.value as Form["normal_side"])}
+                  >
+                    <option value="">Select</option>
+                    <option value="D">Debit</option>
+                    <option value="C">Credit</option>
+                  </select>
+                </Field>
+                <Field
+                  label="Status"
+                  required
+                  error={errors.status}
+                  htmlFor="status"
+                  hint={!creating && account && !account.is_posting ? "Inactive cascades to children" : undefined}
+                >
+                  <select
+                    id="status"
+                    className="input"
+                    value={form.status}
+                    disabled={creating ? !canCreate : !canDeactivate}
+                    onChange={(e) => set("status", e.target.value as Form["status"])}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </Field>
+                <Field label="Old GL A/C No" error={errors.old_code} htmlFor="old_code">
+                  <input id="old_code" className="input" maxLength={20} value={form.old_code} disabled={readOnly} onChange={(e) => set("old_code", e.target.value)} />
+                </Field>
+                <Field label="Economic code" error={errors.economic_code} htmlFor="economic_code">
+                  <input
+                    id="economic_code"
+                    className="input"
+                    maxLength={20}
+                    value={form.economic_code}
+                    disabled={readOnly}
+                    onChange={(e) => set("economic_code", e.target.value)}
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label="GL A/C No" hint={creating ? "Generated from control A/C" : undefined}>
+                  <input className="input tabular" value={form.code} disabled readOnly placeholder={creating ? "Choose control A/C" : ""} />
+                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Title" required error={errors.title} htmlFor="title">
+                    <input
+                      id="title"
+                      className={`input ${errors.title ? "input-error" : ""}`}
+                      maxLength={200}
+                      value={form.title}
+                      disabled={readOnly}
+                      onChange={(e) => set("title", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field label="GL ID" error={errors.gl_id} htmlFor="gl_id" hint="Short code (auto if blank)">
+                  <input
+                    id="gl_id"
+                    className={`input ${errors.gl_id ? "input-error" : ""}`}
+                    maxLength={20}
+                    inputMode="numeric"
+                    value={form.gl_id}
+                    disabled={readOnly}
+                    onChange={(e) => set("gl_id", e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Posting allowed"
+                  required
+                  error={errors.is_posting}
+                  htmlFor="is_posting"
+                  hint={postingLocked ? "Locked: has children or balances" : "Yes = entries; No = group"}
+                >
+                  <select
+                    id="is_posting"
+                    className="input"
+                    value={form.is_posting ? "1" : "0"}
+                    disabled={readOnly || !!postingLocked}
+                    onChange={(e) => set("is_posting", e.target.value === "1")}
+                  >
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                  </select>
+                </Field>
+                <Field label="Transaction type" required error={errors.normal_side} htmlFor="normal_side" hint="Normal balance side">
+                  <select
+                    id="normal_side"
+                    className="input"
+                    value={form.normal_side}
+                    disabled={readOnly}
+                    onChange={(e) => set("normal_side", e.target.value as Form["normal_side"])}
+                  >
+                    <option value="">Select</option>
+                    <option value="D">Debit</option>
+                    <option value="C">Credit</option>
+                  </select>
+                </Field>
+                <Field label="Status" required error={errors.status} htmlFor="status">
+                  <select
+                    id="status"
+                    className="input"
+                    value={form.status}
+                    disabled={creating ? !canCreate : !canDeactivate}
+                    onChange={(e) => set("status", e.target.value as Form["status"])}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </Field>
+                <Field label="Old GL A/C No" error={errors.old_code} htmlFor="old_code">
+                  <input id="old_code" className="input" maxLength={20} value={form.old_code} disabled={readOnly} onChange={(e) => set("old_code", e.target.value)} />
+                </Field>
+                <Field label="Economic code" error={errors.economic_code} htmlFor="economic_code">
+                  <input
+                    id="economic_code"
+                    className="input"
+                    maxLength={20}
+                    value={form.economic_code}
+                    disabled={readOnly}
+                    onChange={(e) => set("economic_code", e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
             <button type="submit" className="hidden" />
           </form>
 
@@ -1021,7 +1086,7 @@ export function AccountDrawer({
                   <p className="text-xs text-gray-500">
                     {creating
                       ? "Click \"Add row\" or \"+5 rows\" to add child accounts while creating this group."
-                      : `${existingRows.length} child account${existingRows.length === 1 ? "" : "s"} under this parent (edit or remove inline). Click "Add row" to add new children.`}
+                      : `${existingRows.length} immediate child account${existingRows.length === 1 ? "" : "s"} under this parent (edit or remove inline). Click "Add row" to add new children.`}
                   </p>
                 </div>
                 {canAddNewChildren && (
@@ -1059,7 +1124,7 @@ export function AccountDrawer({
                       </tr>
                     )}
 
-                    {/* All descendant child rows under this parent (editable + removable) */}
+                    {/* Immediate child rows under this parent (editable + removable) */}
                     {existingRows.map((row, idx) => {
                       const titleErr = childErrors[`existing.${row.id}.title`];
                       const glErr = childErrors[`existing.${row.id}.gl_id`];
@@ -1076,12 +1141,11 @@ export function AccountDrawer({
                         >
                           <td className="px-2.5 py-1.5 text-xs text-gray-500 tabular">{idx + 1}</td>
                           <td className="px-2.5 py-1.5 font-mono text-xs text-gray-700 tabular whitespace-nowrap">
-                            <div style={{ paddingLeft: `${row.depth * 12}px` }} className="flex items-center gap-1">
-                              {row.depth > 0 && <span className="text-gray-400">↳</span>}
+                            <div className="flex items-center gap-1">
                               <span className={!row.is_posting ? "font-semibold text-gray-900" : ""}>{row.code}</span>
                             </div>
                             {row.officeName && (
-                              <div style={{ paddingLeft: `${row.depth * 12}px` }} className="font-sans text-[10px] text-brand-700">
+                              <div className="font-sans text-[10px] text-brand-700">
                                 {row.officeName}
                               </div>
                             )}
@@ -1160,7 +1224,7 @@ export function AccountDrawer({
                                   type="button"
                                   className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
                                   onClick={() => setDeleteChildTarget(row)}
-                                title={`Delete ${row.title}`}
+                                  title={`Delete ${row.title}`}
                                   aria-label={`Delete ${row.title}`}
                                 >
                                   <Trash2 size={15} />

@@ -48,6 +48,7 @@ export function AccountTree({
   search,
   selectedId,
   onSelect,
+  renderInline,
   renderExtra,
   isSelectable,
 }: {
@@ -57,6 +58,7 @@ export function AccountTree({
   search: string;
   selectedId?: number | null;
   onSelect: (account: Account) => void;
+  renderInline?: (account: Account) => React.ReactNode;
   renderExtra?: (account: Account) => React.ReactNode;
   isSelectable?: (account: Account) => boolean;
 }) {
@@ -106,6 +108,7 @@ export function AccountTree({
                   <span className="truncate">
                     {account.title}
                     {account.gl_id && <span className="text-gray-500"> ({account.gl_id})</span>}
+                    {renderInline?.(account)}
                     {account.office && !account.office.is_head_office && (
                       <span className="ml-1.5 inline-flex items-center rounded bg-brand-50 px-1.5 py-0.5 text-xs font-normal text-brand-700">
                         {account.office.name}
